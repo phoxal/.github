@@ -39,7 +39,7 @@ The Phoxal team may move from DCO to a Contributor License Agreement (CLA)
 before accepting external contributions at scale, in order to keep the
 commercial dual-license path open for contributed code. The decision is
 tracked under
-[phoxal/robot-framework#817](https://github.com/phoxal/robot-framework/issues/817);
+[phoxal/.github#7](https://github.com/phoxal/.github/issues/7);
 until that work concludes, please assume DCO and AGPL-3.0-only.
 
 ## Dependency policy

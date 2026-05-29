@@ -195,7 +195,7 @@ deploy target, not to the framework. The `emit` commands hand the user pinned
 artifacts; the user wires them into their own pipeline.
 
 This v1+ surface is tracked under
-[phoxal/robot-framework#815](https://github.com/phoxal/robot-framework/issues/815).
+[phoxal/.github#5](https://github.com/phoxal/.github/issues/5).
 
 ## Observability contract
 

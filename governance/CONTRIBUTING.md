@@ -49,7 +49,7 @@ is required on every commit.
 
 The Phoxal team may revisit DCO vs CLA before accepting external
 contributions at scale, in line with the policy work tracked under
-[phoxal/robot-framework#817](https://github.com/phoxal/robot-framework/issues/817).
+[phoxal/.github#7](https://github.com/phoxal/.github/issues/7).
 
 ## License
 

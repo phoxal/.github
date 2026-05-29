@@ -106,8 +106,8 @@ clean-room run from a fresh user-robot repo.
 
 Open an issue under the relevant repo's tracker. If the change spans
 multiple repos, file it under
-[`phoxal/robot-framework`](https://github.com/phoxal/robot-framework/issues)
-(the cross-repo control plane) and link affected repos in the body.
+[`phoxal/.github`](https://github.com/phoxal/.github/issues)
+(the public cross-repo planning home) and link affected repos in the body.
 
 Use [Phoxal Kanban](https://github.com/orgs/phoxal/projects/1) to track
 status. Issues land on the board; decisions land in code + docs.

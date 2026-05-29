@@ -80,7 +80,7 @@ first, then propagates to consumers. See [DEVELOPMENT_MODEL.md](DEVELOPMENT_MODE
 
 The framework workspace currently bundles engine library crates and platform
 runtime binaries together. The tracked split (per
-[phoxal/robot-framework#823](https://github.com/phoxal/robot-framework/issues/823))
+[phoxal/.github#16](https://github.com/phoxal/.github/issues/16))
 separates these into:
 
 - `phoxal/engine` — the engine library crates + schema crates (`phoxal-engine`, `phoxal-bus`, `phoxal-api-component`, `phoxal-core-robot`, `phoxal-core-structure`, `phoxal-core-component`).

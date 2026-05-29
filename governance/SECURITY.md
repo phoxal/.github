@@ -58,7 +58,7 @@ disclosure. We will credit you in the advisory if you'd like; we'll honor
 
 Trust hardening (image signing, component allowlists, reproducible builds)
 is in progress and tracked under
-[phoxal/robot-framework#822](https://github.com/phoxal/robot-framework/issues/822).
+[phoxal/.github#12](https://github.com/phoxal/.github/issues/12).
 Until those land, the trust minimum is **`phoxal.lock` pins SHAs and
 digests; deploy consumes the lock, never a mutable tag**.
 

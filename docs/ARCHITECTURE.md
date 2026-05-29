@@ -136,7 +136,7 @@ clock primitives, not wall time, so scenario replays are deterministic.
 
 `phoxal-cli build` and `phoxal-cli emit compose` / `emit balena-release` /
 `emit systemd` / `emit k8s` are the v1+ deployment surface (tracked under
-[phoxal/robot-framework#815](https://github.com/phoxal/robot-framework/issues/815)).
+[phoxal/.github#5](https://github.com/phoxal/.github/issues/5)).
 
 The framework's deployment posture: **facilitate, don't decide.** The CLI
 produces pinned artifacts — multi-arch images on GHCR by digest, generated
