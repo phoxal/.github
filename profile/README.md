@@ -69,6 +69,18 @@ The first operational target is **sidewalk and street-maintenance autonomy**. Th
 
 Active development, pre-1.0. The structure above is stable; APIs under each `phoxal-*-api` crate are evolving under `pub mod v1`. Expect changes; expect them to be loud.
 
+## Documentation
+
+Cross-repo reference material lives in this repo:
+
+- [docs/VISION.md](../docs/VISION.md) — what Phoxal is and what it intentionally avoids
+- [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) — system model end to end
+- [docs/BLUEPRINT.md](../docs/BLUEPRINT.md) — target architecture for v1 autonomy
+- [docs/REPOSITORY_MAP.md](../docs/REPOSITORY_MAP.md) — every `phoxal/*` repo and what it owns
+- [docs/DEVELOPMENT_MODEL.md](../docs/DEVELOPMENT_MODEL.md) — how to contribute across repos
+- [docs/AI_ASSISTANT_GUIDE.md](../docs/AI_ASSISTANT_GUIDE.md) — canonical guide for AI coding agents
+- [governance/CONTRIBUTING.md](../governance/CONTRIBUTING.md) · [governance/SECURITY.md](../governance/SECURITY.md) · [governance/LICENSE_POLICY.md](../governance/LICENSE_POLICY.md)
+
 ## Conventions
 
 - **License**: AGPL-3.0-only across every public repository. A commercial license is available for downstream products that cannot meet the AGPL source-disclosure obligations — see each repo's `COMMERCIAL.md` or reach out via [phoxal.com](https://phoxal.com).
