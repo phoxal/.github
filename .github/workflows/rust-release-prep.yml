@@ -64,7 +64,7 @@ jobs:
           else
             pushed_subjects=$(git log -1 --format='%s')
           fi
-          if printf '%s\n' "${pushed_subjects}" | grep -qE '^release: prepare v[0-9]+\.[0-9]+\.[0-9]+'; then
+          if printf '%s\n' "${pushed_subjects}" | grep -qE '^chore\(release\): v[0-9]+\.[0-9]+\.[0-9]+'; then
             echo "This push contains a release-prep commit; release.yml owns it. Skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -149,8 +149,8 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "release: prepare v${{ steps.bump.outputs.version }}"
-          title: "release: prepare v${{ steps.bump.outputs.version }}"
+          commit-message: "chore(release): v${{ steps.bump.outputs.version }}"
+          title: "chore(release): v${{ steps.bump.outputs.version }}"
           body-path: ${{ runner.temp }}/release-prep-body.md
           branch: release-prep/v${{ steps.bump.outputs.version }}
           base: ${{ inputs.default-branch }}

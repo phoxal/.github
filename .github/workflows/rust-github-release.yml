@@ -64,13 +64,13 @@ jobs:
       - name: Verify intended version
         env:
           EXPECTED: ${{ inputs.version }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           set -euo pipefail
+          # The caller's gate took the version from the release-prep branch name;
+          # confirm Cargo.toml on the merged commit agrees before tagging.
           cargo_version=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
-          title_version="${PR_TITLE#release: prepare v}"
-          if [ "${cargo_version}" != "${EXPECTED}" ] || [ "${title_version}" != "${EXPECTED}" ]; then
-            echo "::error::Version mismatch: expected v${EXPECTED}, Cargo.toml=${cargo_version}, PR title=v${title_version}. Refusing to release."
+          if [ "${cargo_version}" != "${EXPECTED}" ]; then
+            echo "::error::Version mismatch: expected v${EXPECTED} but Cargo.toml is ${cargo_version}. Refusing to release."
             exit 1
           fi
           echo "Verified release version v${EXPECTED}."
