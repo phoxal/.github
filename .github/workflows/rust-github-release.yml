@@ -1,0 +1,145 @@
+# Reusable GitHub Release workflow for Phoxal Rust repos.
+#
+# Owns the shared "release seam": verify the intended version, verify-or-create
+# the matching vX.Y.Z tag, and create-or-update the GitHub Release from the
+# artifacts the caller's build jobs uploaded. Build matrices stay in the caller
+# (they differ per repo), so this is invoked last:
+#
+#   jobs:
+#     plan:    # caller-owned gate: only run for `release: prepare vX.Y.Z` merges
+#       if: github.event.pull_request.merged == true &&
+#           startsWith(github.event.pull_request.title, 'release: prepare v')
+#       ...outputs.version...
+#     build:   # caller-owned, repo-specific; uploads artifacts
+#       needs: plan
+#     publish:
+#       needs: [plan, build]
+#       uses: phoxal/organization/.github/workflows/rust-github-release.yml@master
+#       secrets: inherit
+#       with:
+#         version: ${{ needs.plan.outputs.version }}
+#
+# Retry-safe: an existing tag is reused, and an existing release is updated
+# (notes + assets re-uploaded with --clobber) rather than failing.
+name: rust-github-release
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: The X.Y.Z version being released (no leading v).
+        required: true
+        type: string
+      notes-file:
+        description: Path to the release-notes file, resolved after checkout + artifact download.
+        type: string
+        default: CHANGELOG.md
+      asset-pattern:
+        description: Glob of files (relative to the workspace) to attach to the release.
+        type: string
+        default: dist/*.tar.gz
+      artifact-path:
+        description: Directory to download all run artifacts into.
+        type: string
+        default: dist
+      tag-via:
+        description: How to create the tag — "push" (git push) or "api" (Git refs API, for repos that restrict pushing tags from Actions).
+        type: string
+        default: api
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Verify intended version
+        env:
+          EXPECTED: ${{ inputs.version }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          cargo_version=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          title_version="${PR_TITLE#release: prepare v}"
+          if [ "${cargo_version}" != "${EXPECTED}" ] || [ "${title_version}" != "${EXPECTED}" ]; then
+            echo "::error::Version mismatch: expected v${EXPECTED}, Cargo.toml=${cargo_version}, PR title=v${title_version}. Refusing to release."
+            exit 1
+          fi
+          echo "Verified release version v${EXPECTED}."
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ inputs.artifact-path }}
+          merge-multiple: true
+
+      - name: Verify or create version tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="v${{ inputs.version }}"
+          sha="${{ github.event.pull_request.merge_commit_sha }}"
+          case "${{ inputs.tag-via }}" in
+            push)
+              if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+                existing=$(git rev-list -n1 "${tag}")
+                echo "Tag ${tag} already exists at ${existing} (retry-safe; reusing it)."
+                if [ "${existing}" != "${sha}" ]; then
+                  echo "::warning::Tag ${tag} points at ${existing}, but this release merged at ${sha}. Keeping the existing tag."
+                fi
+              else
+                echo "Creating tag ${tag} at ${sha} via git push."
+                git tag "${tag}" "${sha}"
+                git push origin "refs/tags/${tag}"
+              fi
+              ;;
+            api)
+              if existing=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" --jq '.object.sha' 2>/dev/null); then
+                echo "Tag ${tag} already exists at ${existing} (retry-safe; reusing it)."
+                if [ "${existing}" != "${sha}" ]; then
+                  echo "::warning::Tag ${tag} points at ${existing}, but this release merged at ${sha}. Keeping the existing tag."
+                fi
+              else
+                echo "Creating tag ${tag} at ${sha} via the Git refs API."
+                gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                  -f ref="refs/tags/${tag}" -f sha="${sha}" >/dev/null
+              fi
+              ;;
+            *)
+              echo "::error::Unknown tag-via '${{ inputs.tag-via }}' (expected 'push' or 'api')."
+              exit 1
+              ;;
+          esac
+
+      - name: Publish or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="v${{ inputs.version }}"
+          notes="${{ inputs.notes-file }}"
+          if [ ! -f "${notes}" ]; then
+            echo "::error::notes-file '${notes}' not found after checkout + artifact download."
+            exit 1
+          fi
+          # Retry-safe: the tag exists (created above). Update an existing
+          # release instead of failing on re-run.
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "Release ${tag} already exists; updating notes and re-uploading assets."
+            gh release edit "${tag}" --title "${tag}" --notes-file "${notes}"
+            gh release upload "${tag}" ${{ inputs.asset-pattern }} --clobber
+          else
+            echo "Creating release ${tag}."
+            gh release create "${tag}" \
+              --title "${tag}" \
+              --notes-file "${notes}" \
+              ${{ inputs.asset-pattern }}
+          fi
