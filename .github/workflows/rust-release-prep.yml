@@ -152,7 +152,7 @@ jobs:
           commit-message: "chore(release): v${{ steps.bump.outputs.version }}"
           title: "chore(release): v${{ steps.bump.outputs.version }}"
           body-path: ${{ runner.temp }}/release-prep-body.md
-          branch: release-prep/v${{ steps.bump.outputs.version }}
+          branch: release/v${{ steps.bump.outputs.version }}
           base: ${{ inputs.default-branch }}
           delete-branch: true
           signoff: true
