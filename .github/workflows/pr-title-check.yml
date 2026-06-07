@@ -1,0 +1,52 @@
+# Reusable PR-title linter for Phoxal repos.
+#
+# The release automation derives version bumps from Conventional Commit types,
+# so every repo that uses it should enforce Conventional Commit PR titles.
+# Called (not inherited) by a repo's local wrapper:
+#
+#   on:
+#     pull_request_target:
+#       types: [opened, edited, synchronize]
+#   jobs:
+#     lint:
+#       uses: phoxal/organization/.github/workflows/pr-title-check.yml@master
+#       secrets: inherit
+name: pr-title-check
+
+on:
+  workflow_call:
+    inputs:
+      types:
+        description: Newline-separated list of allowed Conventional Commit types.
+        type: string
+        default: |
+          fix
+          feat
+          docs
+          style
+          refactor
+          perf
+          test
+          build
+          ci
+          chore
+          revert
+      require-scope:
+        description: Whether a scope is required in the PR title.
+        type: boolean
+        default: false
+
+permissions:
+  pull-requests: read
+
+jobs:
+  main:
+    name: Validate PR title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: ${{ inputs.types }}
+          requireScope: ${{ inputs.require-scope }}
