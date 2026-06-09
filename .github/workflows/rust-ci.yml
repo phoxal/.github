@@ -1,0 +1,84 @@
+# Reusable CI workflow for Phoxal Rust repos.
+#
+# Runs fmt, clippy, and test as three parallel jobs, so the workspace is
+# type-checked and built concurrently instead of compiled twice back-to-back in
+# a single serial job (clippy and `cargo test` don't share artifacts). Called
+# (not inherited) by a repo's local `ci.yml` wrapper:
+#
+#   name: ci
+#   on:
+#     pull_request:
+#     push:
+#       branches: [main]
+#   jobs:
+#     ci:
+#       uses: phoxal/.github/.github/workflows/rust-ci.yml@main
+#       secrets: inherit
+#
+# Repos whose build needs extra system libraries pass them via `system-packages`
+# (e.g. `with: { system-packages: "libssl-dev nasm" }`).
+name: rust-ci
+
+on:
+  workflow_call:
+    inputs:
+      toolchain:
+        description: Rust toolchain to install.
+        type: string
+        default: stable
+      system-packages:
+        description: Space-separated apt packages to install before building (for -sys crates).
+        type: string
+        default: ""
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          components: rustfmt
+          cache: false
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          components: clippy
+      - name: Install system packages
+        if: ${{ inputs.system-packages != '' }}
+        env:
+          SYSTEM_PACKAGES: ${{ inputs.system-packages }}
+        run: |
+          set -euo pipefail
+          read -ra pkgs <<< "$SYSTEM_PACKAGES"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "${pkgs[@]}"
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ inputs.toolchain }}
+      - name: Install system packages
+        if: ${{ inputs.system-packages != '' }}
+        env:
+          SYSTEM_PACKAGES: ${{ inputs.system-packages }}
+        run: |
+          set -euo pipefail
+          read -ra pkgs <<< "$SYSTEM_PACKAGES"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "${pkgs[@]}"
+      - run: cargo test --workspace
