@@ -4,12 +4,12 @@
 #
 #   jobs:
 #     prepare:
-#       uses: phoxal/organization/.github/workflows/rust-release-prep.yml@master
+#       uses: phoxal/.github/.github/workflows/rust-release-prep.yml@main
 #       secrets: inherit
 #
 # On every push to the default branch it computes the next semver from
 # conventional commits since the last tag, bumps Cargo.toml + regenerates
-# CHANGELOG.md, and opens a `release: prepare vX.Y.Z` PR. Merging that PR is
+# CHANGELOG.md, and opens a `chore(release): vX.Y.Z` PR. Merging that PR is
 # what triggers the repo's `release.yml`. It deliberately skips its own
 # release-prep merge so it never loops.
 name: rust-release-prep

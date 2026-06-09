@@ -6,15 +6,15 @@
 # (they differ per repo), so this is invoked last:
 #
 #   jobs:
-#     plan:    # caller-owned gate: only run for `release: prepare vX.Y.Z` merges
+#     plan:    # caller-owned gate: only run for release/vX.Y.Z branch merges
 #       if: github.event.pull_request.merged == true &&
-#           startsWith(github.event.pull_request.title, 'release: prepare v')
+#           startsWith(github.event.pull_request.head.ref, 'release/v')
 #       ...outputs.version...
 #     build:   # caller-owned, repo-specific; uploads artifacts
 #       needs: plan
 #     publish:
 #       needs: [plan, build]
-#       uses: phoxal/organization/.github/workflows/rust-github-release.yml@master
+#       uses: phoxal/.github/.github/workflows/rust-github-release.yml@main
 #       secrets: inherit
 #       with:
 #         version: ${{ needs.plan.outputs.version }}
