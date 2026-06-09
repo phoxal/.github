@@ -121,6 +121,23 @@ jobs:
           PY
           fi
 
+      - name: Set up Rust
+        if: steps.bump.outputs.skip != 'true'
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
+
+      - name: Sync Cargo.lock to the bumped version
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          # Bump the workspace crates' entries in Cargo.lock to match the bumped
+          # Cargo.toml so the release PR carries a consistent lockfile. --workspace
+          # touches only the workspace members, not external deps. Without this the
+          # committed Cargo.lock stays a version behind and `--locked` builds (and
+          # `cargo install --git`) break.
+          cargo update --workspace
+
       - name: Regenerate CHANGELOG.md
         if: steps.bump.outputs.skip != 'true'
         env:
