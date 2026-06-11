@@ -91,6 +91,11 @@ jobs:
           last_version="${last_tag#v}"
           base_version="${last_version%%-*}"
           IFS='.' read -r major minor patch <<< "$base_version"
+          # Semver pre-1.0: a breaking change at 0.x bumps the minor, not to 1.0.0.
+          # Graduating to 1.0.0 is a deliberate manual release, never automatic.
+          if [ "$major" -eq 0 ] && [ "$bump" = "major" ]; then
+            bump="minor"
+          fi
           case "$bump" in
             major) major=$((major+1)); minor=0; patch=0 ;;
             minor) minor=$((minor+1)); patch=0 ;;
