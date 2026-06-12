@@ -12,6 +12,15 @@
 # CHANGELOG.md, and opens a `chore(release): vX.Y.Z` PR. Merging that PR is
 # what triggers the repo's `release.yml`. It deliberately skips its own
 # release-prep merge so it never loops.
+#
+# Release-app token (recommended): set the org secrets RELEASE_APP_ID and
+# RELEASE_APP_PRIVATE_KEY to a Phoxal-owned GitHub App installation (Contents +
+# Pull requests: read/write). The PR is then authored by that machine identity
+# instead of GITHUB_TOKEN. This matters because a PR opened with GITHUB_TOKEN
+# never triggers `pull_request` CI (GitHub's recursion guard), so the release PR
+# stalls behind the first-time-contributor approval gate. When the secrets are
+# absent the workflow falls back to GITHUB_TOKEN (PR still opens; CI must be
+# approved manually).
 name: rust-release-prep
 
 on:
@@ -37,11 +46,28 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    env:
+      # Empty unless the release-app secrets are configured; the steps below
+      # then fall back to GITHUB_TOKEN.
+      HAS_RELEASE_APP: ${{ secrets.RELEASE_APP_ID != '' }}
     steps:
+      # Mint a short-lived installation token for the Phoxal release GitHub App
+      # so the release-prep PR is authored by a machine identity other than
+      # GITHUB_TOKEN. PRs opened with GITHUB_TOKEN never trigger `pull_request`
+      # CI, leaving the release PR stuck behind the first-time-contributor
+      # approval gate; an App token sidesteps that.
+      - name: Mint release-app token
+        id: app-token
+        if: env.HAS_RELEASE_APP == 'true'
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
 
       - name: Install git-cliff
         uses: kenji-miyake/setup-git-cliff@v2
@@ -170,7 +196,7 @@ jobs:
         if: steps.bump.outputs.skip != 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           commit-message: "chore(release): v${{ steps.bump.outputs.version }}"
           title: "chore(release): v${{ steps.bump.outputs.version }}"
           body-path: ${{ runner.temp }}/release-prep-body.md
