@@ -13,6 +13,13 @@
 # what triggers the repo's `release.yml`. It deliberately skips its own
 # release-prep merge so it never loops.
 #
+# Exactly 0 or 1 release PR is open at any time. Each computed version lives on
+# its own `release/vX.Y.Z` branch, so a later push computing a *higher*
+# cumulative version would otherwise open a second PR alongside the first. To
+# enforce the invariant, the workflow supersedes stale release PRs: before
+# opening the PR for the current version it closes (and deletes the branch of)
+# every other open `release/*` PR. The newest computed version always wins.
+#
 # Who opens the PR (token precedence): a PR opened with GITHUB_TOKEN never
 # triggers `pull_request` CI (GitHub's recursion guard), so the release PR stalls
 # behind the first-time-contributor approval gate ("Approve and run"). To avoid
@@ -40,10 +47,6 @@ on:
         description: git-cliff version used to regenerate CHANGELOG.md.
         type: string
         default: "2.7.0"
-      changelog-preview-lines:
-        description: How many CHANGELOG.md lines to include in the PR body preview.
-        type: number
-        default: 220
 
 permissions:
   contents: write
@@ -196,7 +199,35 @@ jobs:
 
           ## Changelog preview
           BODY
-          sed -n '1,${{ inputs.changelog-preview-lines }}p' CHANGELOG.md >> "$RUNNER_TEMP/release-prep-body.md"
+          # Only the section for the version being released, not the whole file.
+          # git-cliff emits a `# Changelog` preamble followed by one `## [x.y.z]`
+          # block per version; print from the first version heading up to (but
+          # excluding) the next one.
+          awk '/^## \[/ { n++ } n == 1 { print } n == 2 { exit }' CHANGELOG.md \
+            >> "$RUNNER_TEMP/release-prep-body.md"
+
+      - name: Supersede stale release PRs
+        if: steps.bump.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          KEEP: release/v${{ steps.bump.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Enforce the 0-or-1 invariant. The version bump lives on the PR
+          # branch, never on the default branch, so the "release in flight"
+          # guard above can't see an already-open release PR. Close every other
+          # open release/* PR (and delete its branch) before opening the current
+          # one; the newest computed version supersedes the rest. The current
+          # version's own PR (KEEP) is left alone so create-pull-request updates
+          # it in place.
+          gh pr list --state open --limit 100 --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("release/")) | select(.headRefName != env.KEEP) | .number' \
+          | while read -r n; do
+              [ -n "$n" ] || continue
+              echo "Superseding stale release PR #$n"
+              gh pr close "$n" --delete-branch \
+                --comment "Superseded by the release-prep PR for v${{ steps.bump.outputs.version }} (only 0 or 1 release PR is kept open)."
+            done
 
       - name: Open release-prep PR
         if: steps.bump.outputs.skip != 'true'
