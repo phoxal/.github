@@ -145,21 +145,34 @@ jobs:
 
       - name: Update Cargo.toml workspace version
         if: steps.bump.outputs.skip != 'true'
+        env:
+          NEW_VERSION: ${{ steps.bump.outputs.version }}
         run: |
           set -euo pipefail
-          if grep -q '^\[workspace.package\]' Cargo.toml; then
-            sed -i 's/^version = ".*"/version = "${{ steps.bump.outputs.version }}"/' Cargo.toml
-          else
-            python3 - <<'PY'
-          import pathlib
-          import re
-
+          # Bump the package/workspace version AND every internal path-based dependency
+          # pin to the new version. crates.io requires a path dep to also carry a
+          # version; if a pin is left behind, the bumped member no longer satisfies its
+          # own `^old` requirement and the next step's `cargo update --workspace` fails
+          # to resolve it (which blocked releases the moment new publishable members
+          # were added before their first publish). Only inline-table deps containing a
+          # `path =` are touched (local members); external deps and path deps without a
+          # version pin are left as-is.
+          python3 - <<'PY'
+          import os, pathlib, re
+          ver = os.environ["NEW_VERSION"]
           p = pathlib.Path("Cargo.toml")
           t = p.read_text()
-          t = re.sub(r'(\[package\][^\[]*?\nversion = ")[^"]+(")', r'\g<1>${{ steps.bump.outputs.version }}\g<2>', t, count=1, flags=re.DOTALL)
+          # The sole top-level `version = "..."` line (the `[package]` or
+          # `[workspace.package]` version; anchored so an array field before it, or a
+          # dependency's inline version, is never matched).
+          t = re.sub(r'^version = "[^"]+"', 'version = "' + ver + '"', t, count=1, flags=re.M)
+          # Internal path-based dependency pins (any inline table carrying a `path =`).
+          t = re.sub(
+              r'\{[^{}\n]*\bpath\s*=\s*"[^"]+"[^{}\n]*\}',
+              lambda m: re.sub(r'version\s*=\s*"[^"]+"', 'version = "' + ver + '"', m.group(0)),
+              t)
           p.write_text(t)
           PY
-          fi
 
       - name: Set up Rust
         if: steps.bump.outputs.skip != 'true'
