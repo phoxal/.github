@@ -99,7 +99,10 @@ jobs:
           else
             pushed_subjects=$(git log -1 --format='%s')
           fi
-          if printf '%s\n' "${pushed_subjects}" | grep -qE '^chore\(release\): v[0-9]+\.[0-9]+\.[0-9]+'; then
+          # Do not pipe a potentially long producer into `grep -q` under
+          # pipefail: once grep finds a match and exits, the producer can receive
+          # SIGPIPE and make the successful match look like status 141.
+          if grep -qE '^chore\(release\): v[0-9]+\.[0-9]+\.[0-9]+' <<< "${pushed_subjects}"; then
             echo "This push contains a release-prep commit; release.yml owns it. Skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -112,11 +115,11 @@ jobs:
             exit 0
           fi
           commits=$(git log --format="%s%n%n%b" "${last_tag}..HEAD" 2>/dev/null || git log --format="%s%n%n%b")
-          if echo "$commits" | grep -qE "^[a-z]+(\([^)]+\))?!:" || echo "$commits" | grep -qE "^BREAKING CHANGE:"; then
+          if grep -qE "^[a-z]+(\([^)]+\))?!:" <<< "$commits" || grep -qE "^BREAKING CHANGE:" <<< "$commits"; then
             bump="major"
-          elif echo "$commits" | grep -qE "^feat(\([^)]+\))?:"; then
+          elif grep -qE "^feat(\([^)]+\))?:" <<< "$commits"; then
             bump="minor"
-          elif echo "$commits" | grep -qE "^fix(\([^)]+\))?:"; then
+          elif grep -qE "^fix(\([^)]+\))?:" <<< "$commits"; then
             bump="patch"
           else
             echo "No bumping commits since ${last_tag}; nothing to propose."
