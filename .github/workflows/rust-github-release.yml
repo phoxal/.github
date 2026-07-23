@@ -93,7 +93,8 @@ jobs:
                 existing=$(git rev-list -n1 "${tag}")
                 echo "Tag ${tag} already exists at ${existing} (retry-safe; reusing it)."
                 if [ "${existing}" != "${sha}" ]; then
-                  echo "::warning::Tag ${tag} points at ${existing}, but this release merged at ${sha}. Keeping the existing tag."
+                  echo "::error::Tag ${tag} points at ${existing}, but this release merged at ${sha}. Refusing to publish against the wrong commit."
+                  exit 1
                 fi
               else
                 echo "Creating tag ${tag} at ${sha} via git push."
@@ -105,7 +106,8 @@ jobs:
               if existing=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" --jq '.object.sha' 2>/dev/null); then
                 echo "Tag ${tag} already exists at ${existing} (retry-safe; reusing it)."
                 if [ "${existing}" != "${sha}" ]; then
-                  echo "::warning::Tag ${tag} points at ${existing}, but this release merged at ${sha}. Keeping the existing tag."
+                  echo "::error::Tag ${tag} points at ${existing}, but this release merged at ${sha}. Refusing to publish against the wrong commit."
+                  exit 1
                 fi
               else
                 echo "Creating tag ${tag} at ${sha} via the Git refs API."
