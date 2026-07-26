@@ -17,6 +17,11 @@
 #
 # Repos whose build needs extra system libraries pass them via `system-packages`
 # (e.g. `with: { system-packages: "libssl-dev nasm" }`).
+#
+# Repos containing a Webots controller pass `webots-version` (e.g.
+# `with: { webots-version: R2025a }`). Webots is a build prerequisite there, not
+# a runtime one: webots-rs links libController from the installation, so even
+# `cargo check` fails without it.
 name: rust-ci
 
 on:
@@ -28,6 +33,10 @@ on:
         default: stable
       system-packages:
         description: Space-separated apt packages to install before building (for -sys crates).
+        type: string
+        default: ""
+      webots-version:
+        description: Webots release to install before building (e.g. R2025a); empty installs nothing.
         type: string
         default: ""
 
@@ -63,6 +72,28 @@ jobs:
           read -ra pkgs <<< "$SYSTEM_PACKAGES"
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends "${pkgs[@]}"
+      - name: Cache Webots download
+        if: ${{ inputs.webots-version != '' }}
+        id: cache-webots
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/webots.tar.bz2
+          key: webots-${{ inputs.webots-version }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Download Webots
+        if: ${{ inputs.webots-version != '' && steps.cache-webots.outputs.cache-hit != 'true' }}
+        env:
+          WEBOTS_VERSION: ${{ inputs.webots-version }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            "https://github.com/cyberbotics/webots/releases/download/${WEBOTS_VERSION}/webots-${WEBOTS_VERSION}-x86-64.tar.bz2" \
+            --output "$RUNNER_TEMP/webots.tar.bz2"
+      - name: Install Webots
+        if: ${{ inputs.webots-version != '' }}
+        run: |
+          set -euo pipefail
+          tar -xjf "$RUNNER_TEMP/webots.tar.bz2" -C "$RUNNER_TEMP"
+          echo "WEBOTS_HOME=$RUNNER_TEMP/webots" >> "$GITHUB_ENV"
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
   test:
@@ -81,4 +112,26 @@ jobs:
           read -ra pkgs <<< "$SYSTEM_PACKAGES"
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends "${pkgs[@]}"
+      - name: Cache Webots download
+        if: ${{ inputs.webots-version != '' }}
+        id: cache-webots
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/webots.tar.bz2
+          key: webots-${{ inputs.webots-version }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Download Webots
+        if: ${{ inputs.webots-version != '' && steps.cache-webots.outputs.cache-hit != 'true' }}
+        env:
+          WEBOTS_VERSION: ${{ inputs.webots-version }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            "https://github.com/cyberbotics/webots/releases/download/${WEBOTS_VERSION}/webots-${WEBOTS_VERSION}-x86-64.tar.bz2" \
+            --output "$RUNNER_TEMP/webots.tar.bz2"
+      - name: Install Webots
+        if: ${{ inputs.webots-version != '' }}
+        run: |
+          set -euo pipefail
+          tar -xjf "$RUNNER_TEMP/webots.tar.bz2" -C "$RUNNER_TEMP"
+          echo "WEBOTS_HOME=$RUNNER_TEMP/webots" >> "$GITHUB_ENV"
       - run: cargo test --workspace
