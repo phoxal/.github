@@ -50,7 +50,10 @@ jobs:
       - uses: taiki-e/install-action@v2
         if: steps.gate.outputs.skip != 'true'
         with:
-          tool: release-plz
+          # cargo-semver-checks is the binary release-plz shells out to when a
+          # workspace sets `semver_check = true`; without it the check is
+          # silently skipped.
+          tool: release-plz,cargo-semver-checks
 
       - name: Require the release App on canonical repositories
         if: >-
