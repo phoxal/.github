@@ -1,27 +1,25 @@
 <div align="center">
 
-<img src="https://phoxal.com/assets/phoxal-logo-vertical-transparent.png" alt="PHOXAL" width="220" />
+<h1>PHOXAL</h1>
 
-### Rust-first robotics with explicit models and typed contracts.
+### Build robots that improve without giving up control.
 
-[![Status](https://img.shields.io/badge/Status-Pre--alpha-7fe7e3?style=flat-square&labelColor=06080b)](https://phoxal.com)
-[![Website](https://img.shields.io/badge/phoxal.com-7fe7e3?style=flat-square&labelColor=06080b)](https://phoxal.com)
+Open source · Pre-1.0 · Under active development
+
+[Project vision](https://phoxal.com) · [Framework](https://github.com/phoxal/framework) · [Developer CLI](https://github.com/phoxal/phoxal-cli) · [Reference robot](https://github.com/phoxal/robot-rover)
 
 </div>
 
----
+Phoxal is an open-source robotics framework for turning robot experience into observable, repeatable, and deliberately evaluated improvements.
 
-**Phoxal Framework** is an open-source robotics project for authoring,
-validating, simulating, and running robots with explicit contracts.
-
-Phoxal is pre-alpha and pre-1.0. The project is moving quickly, and public APIs
-and runtime behavior may change between releases.
+The project is building one coherent path from authoring and deterministic validation through simulation, execution, observation, evaluation, and explicit promotion of an improved artifact.
 
 ## Explore
 
-- [Website and documentation](https://phoxal.com)
-- [Framework](https://github.com/phoxal/framework)
-- [CLI and supervisor](https://github.com/phoxal/phoxal-cli)
-- [Rover sandbox](https://github.com/phoxal/robot-rover)
+- [Project vision and public introduction](https://phoxal.com)
+- [Reusable framework and contracts](https://github.com/phoxal/framework)
+- [Developer CLI and execution workflows](https://github.com/phoxal/phoxal-cli)
+- [Public rover reference application](https://github.com/phoxal/robot-rover)
+- [Community standards and reusable CI](https://github.com/phoxal/.github)
 
-Contribution and licensing terms are documented in each repository.
+Repository-specific documentation is the authority for current APIs, commands, support, contribution, and licensing details.
