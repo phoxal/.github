@@ -12,7 +12,9 @@ Open source · Pre-1.0 · Under active development
 
 Phoxal is an open-source robotics framework for turning robot experience into observable, repeatable, and deliberately evaluated improvements.
 
-The project is building one coherent path from authoring and deterministic validation through simulation, execution, observation, evaluation, and explicit promotion of an improved artifact.
+> Every execution should produce evidence for a better next release.
+
+Phoxal keeps authoring, deterministic validation, simulation, execution, observation, evaluation, and explicit promotion in one coherent, inspectable lifecycle.
 
 ## Explore
 
@@ -20,6 +22,12 @@ The project is building one coherent path from authoring and deterministic valid
 - [Reusable framework and contracts](https://github.com/phoxal/framework)
 - [Developer CLI and execution workflows](https://github.com/phoxal/phoxal-cli)
 - [Public rover reference application](https://github.com/phoxal/robot-rover)
-- [Community standards and reusable CI](https://github.com/phoxal/.github)
+- [Community standards and reusable workflows](https://github.com/phoxal/.github)
 
 Repository-specific documentation is the authority for current APIs, commands, support, contribution, and licensing details.
+
+<p>
+Follow the build.<br>
+Challenge the architecture.<br>
+<a href="mailto:info@phoxal.com">Start a conversation</a>.
+</p>
