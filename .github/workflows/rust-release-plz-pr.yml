@@ -1,17 +1,12 @@
 # Reusable release-plz PR workflow for Phoxal Rust workspaces.
 #
 # The caller owns scheduling, concurrency, and publication. This workflow owns
-# the common PR-authoring path: avoid racing an already-prepared release,
-# authenticate as phoxal-release-bot, and run release-plz.
+# the common PR-authoring path: authenticate as phoxal-release-bot and run
+# release-plz against each package's own published baseline.
 name: rust-release-plz-pr
 
 on:
   workflow_call:
-    inputs:
-      registry-manifest-from-latest-tag:
-        description: Compare unpublished workspace packages with Cargo.toml from the latest immutable vX.Y.Z tag.
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -28,27 +23,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect a prepared release awaiting publication
-        id: gate
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')"
-          latest_tag="$(git describe --tags --match 'v*.*.*' --abbrev=0 2>/dev/null || true)"
-          if [[ -n "$latest_tag" ]] \
-             && ! git rev-parse -q --verify "v${version}^{commit}" >/dev/null 2>&1 \
-             && [[ "$version" != "${latest_tag#v}" ]]; then
-            echo "v${version} is prepared but not tagged; the repository release workflow owns it."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-        if: steps.gate.outputs.skip != 'true'
 
       - uses: taiki-e/install-action@v2
-        if: steps.gate.outputs.skip != 'true'
         with:
           # cargo-semver-checks is the binary release-plz shells out to when a
           # workspace sets `semver_check = true`; without it the check is
@@ -57,7 +34,6 @@ jobs:
 
       - name: Require the release App on canonical repositories
         if: >-
-          steps.gate.outputs.skip != 'true' &&
           github.repository_owner == 'phoxal' &&
           env.HAS_RELEASE_APP != 'true'
         run: |
@@ -67,45 +43,18 @@ jobs:
 
       - name: Generate GitHub App token
         id: app-token
-        if: steps.gate.outputs.skip != 'true' && env.HAS_RELEASE_APP == 'true'
+        if: env.HAS_RELEASE_APP == 'true'
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ secrets.RELEASE_APP_ID }}
+          app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
 
-      # release-plz's git-only mode cannot model phoxal-cli's unpublished path
-      # dependencies. That caller supplies the tagged workspace as the local
-      # registry manifest instead.
-      - name: Prepare tagged comparison baseline
-        id: baseline
-        if: >-
-          steps.gate.outputs.skip != 'true' &&
-          inputs.registry-manifest-from-latest-tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="$(git describe --tags --match 'v*.*.*' --abbrev=0 2>/dev/null || true)"
-          [[ -n "$tag" ]] || {
-            echo "::error::registry-manifest-from-latest-tag requires at least one immutable vX.Y.Z tag."
-            exit 1
-          }
-          baseline="${RUNNER_TEMP}/release-plz-registry-baseline"
-          git worktree add --detach "$baseline" "$tag"
-          echo "manifest=${baseline}/Cargo.toml" >> "$GITHUB_OUTPUT"
-
       - name: Prepare release PR
-        if: steps.gate.outputs.skip != 'true'
         env:
           GIT_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
-          USE_TAGGED_BASELINE: ${{ inputs.registry-manifest-from-latest-tag }}
-          BASELINE_MANIFEST: ${{ steps.baseline.outputs.manifest }}
         shell: bash
         run: |
           set -euo pipefail
-          args=(release-pr)
-          if [[ "$USE_TAGGED_BASELINE" == "true" ]]; then
-            args+=(--registry-manifest-path "$BASELINE_MANIFEST")
-          fi
-          release-plz "${args[@]}"
+          release-plz release-pr
