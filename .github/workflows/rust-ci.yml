@@ -1,9 +1,8 @@
 # Reusable CI workflow for Phoxal Rust repos.
 #
-# Runs fmt, clippy, and test as three parallel jobs, so the workspace is
-# type-checked and built concurrently instead of compiled twice back-to-back in
-# a single serial job (clippy and `cargo test` don't share artifacts). Called
-# (not inherited) by a repo's local `ci.yml` wrapper:
+# Runs fmt, clippy, test (and optionally rustdoc) as parallel jobs with
+# locked dependency resolution. Called (not inherited) by a repo's local
+# `ci.yml` wrapper:
 #
 #   name: ci
 #   on:
@@ -13,15 +12,13 @@
 #   jobs:
 #     ci:
 #       uses: phoxal/.github/.github/workflows/rust-ci.yml@main
-#       secrets: inherit
+#       with: { test-args: "--exclude native-fixture" }
 #
-# Repos whose build needs extra system libraries pass them via `system-packages`
-# (e.g. `with: { system-packages: "libssl-dev nasm" }`).
-#
-# Repos containing a Webots controller pass `webots-version` (e.g.
-# `with: { webots-version: R2025a }`). Webots is a build prerequisite there, not
-# a runtime one: webots-rs links libController from the installation, so even
-# `cargo check` fails without it.
+# Repos whose build needs extra system libraries pass them via
+# `system-packages` (e.g. `with: { system-packages: "libssl-dev nasm" }`).
+# Tests that need a simulator installation, real hardware, or a host
+# fixture are excluded here and run as explicitly recorded acceptance
+# commands instead — CI never carries a knowingly-failing suite.
 name: rust-ci
 
 on:
@@ -35,10 +32,14 @@ on:
         description: Space-separated apt packages to install before building (for -sys crates).
         type: string
         default: ""
-      webots-version:
-        description: Webots release to install before building (e.g. R2025a); empty installs nothing.
+      test-args:
+        description: Extra cargo test arguments (e.g. "--exclude a-package").
         type: string
         default: ""
+      rustdoc:
+        description: Run a strict rustdoc job (`cargo doc --no-deps -- -D warnings`).
+        type: boolean
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -47,7 +48,7 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.toolchain }}
@@ -58,7 +59,7 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.toolchain }}
@@ -72,34 +73,12 @@ jobs:
           read -ra pkgs <<< "$SYSTEM_PACKAGES"
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends "${pkgs[@]}"
-      - name: Cache Webots download
-        if: ${{ inputs.webots-version != '' }}
-        id: cache-webots
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/webots.tar.bz2
-          key: webots-${{ inputs.webots-version }}-${{ runner.os }}-${{ runner.arch }}
-      - name: Download Webots
-        if: ${{ inputs.webots-version != '' && steps.cache-webots.outputs.cache-hit != 'true' }}
-        env:
-          WEBOTS_VERSION: ${{ inputs.webots-version }}
-        run: |
-          set -euo pipefail
-          curl --fail --location --silent --show-error \
-            "https://github.com/cyberbotics/webots/releases/download/${WEBOTS_VERSION}/webots-${WEBOTS_VERSION}-x86-64.tar.bz2" \
-            --output "$RUNNER_TEMP/webots.tar.bz2"
-      - name: Install Webots
-        if: ${{ inputs.webots-version != '' }}
-        run: |
-          set -euo pipefail
-          tar -xjf "$RUNNER_TEMP/webots.tar.bz2" -C "$RUNNER_TEMP"
-          echo "WEBOTS_HOME=$RUNNER_TEMP/webots" >> "$GITHUB_ENV"
-      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.toolchain }}
@@ -112,26 +91,15 @@ jobs:
           read -ra pkgs <<< "$SYSTEM_PACKAGES"
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends "${pkgs[@]}"
-      - name: Cache Webots download
-        if: ${{ inputs.webots-version != '' }}
-        id: cache-webots
-        uses: actions/cache@v4
+      - run: cargo test --workspace --locked --no-fail-fast ${{ inputs.test-args }}
+
+  rustdoc:
+    if: ${{ inputs.rustdoc }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          path: ${{ runner.temp }}/webots.tar.bz2
-          key: webots-${{ inputs.webots-version }}-${{ runner.os }}-${{ runner.arch }}
-      - name: Download Webots
-        if: ${{ inputs.webots-version != '' && steps.cache-webots.outputs.cache-hit != 'true' }}
-        env:
-          WEBOTS_VERSION: ${{ inputs.webots-version }}
-        run: |
-          set -euo pipefail
-          curl --fail --location --silent --show-error \
-            "https://github.com/cyberbotics/webots/releases/download/${WEBOTS_VERSION}/webots-${WEBOTS_VERSION}-x86-64.tar.bz2" \
-            --output "$RUNNER_TEMP/webots.tar.bz2"
-      - name: Install Webots
-        if: ${{ inputs.webots-version != '' }}
-        run: |
-          set -euo pipefail
-          tar -xjf "$RUNNER_TEMP/webots.tar.bz2" -C "$RUNNER_TEMP"
-          echo "WEBOTS_HOME=$RUNNER_TEMP/webots" >> "$GITHUB_ENV"
-      - run: cargo test --workspace
+          toolchain: ${{ inputs.toolchain }}
+          components: rust-docs
+      - run: cargo doc --workspace --no-deps --locked --document-private-items -- -D warnings
