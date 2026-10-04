@@ -1,47 +1,30 @@
-# Reusable release-plz PR workflow for Phoxal Rust workspaces.
-#
-# The caller owns scheduling, concurrency, and publication. This workflow owns
-# the common PR-authoring path: authenticate as phoxal-release-bot and run
-# release-plz against each package's own published baseline.
+# Standard release-plz PR generation. The caller owns scheduling and release authority.
 name: rust-release-plz-pr
-
 on:
   workflow_call:
-
+    inputs:
+      manifest-path:
+        type: string
+        default: Cargo.toml
+      config:
+        type: string
+        default: release-plz.toml
 permissions:
   contents: write
   pull-requests: write
-
 jobs:
   release-plz-pr:
-    name: prepare release PR
     runs-on: ubuntu-latest
     env:
-      HAS_RELEASE_APP: ${{ secrets.RELEASE_APP_ID != '' }}
+      HAS_RELEASE_APP: ${{ secrets.RELEASE_APP_ID != '' && secrets.RELEASE_APP_PRIVATE_KEY != '' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
-
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      - uses: taiki-e/install-action@v2
-        with:
-          # cargo-semver-checks is the binary release-plz shells out to when a
-          # workspace sets `semver_check = true`; without it the check is
-          # silently skipped.
-          tool: release-plz,cargo-semver-checks
-
-      - name: Require the release App on canonical repositories
-        if: >-
-          github.repository_owner == 'phoxal' &&
-          env.HAS_RELEASE_APP != 'true'
-        run: |
-          echo "${GITHUB_REPOSITORY} must author release PRs with the phoxal-release-bot App;" >&2
-          echo "RELEASE_APP_ID/RELEASE_APP_PRIVATE_KEY are missing or unavailable." >&2
-          exit 1
-
-      - name: Generate GitHub App token
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Generate release App token
         id: app-token
         if: env.HAS_RELEASE_APP == 'true'
         uses: actions/create-github-app-token@v3
@@ -50,11 +33,10 @@ jobs:
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
-
-      - name: Prepare release PR
+      - uses: release-plz/action@v0.5
+        with:
+          command: release-pr
+          manifest_path: ${{ inputs.manifest-path }}
+          config: ${{ inputs.config }}
         env:
-          GIT_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          release-plz release-pr
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
