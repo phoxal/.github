@@ -6,7 +6,7 @@
 
 Open source · Pre-1.0 · Under active development
 
-[Project vision](https://phoxal.com) · [Framework](https://github.com/phoxal/framework) · [Developer CLI](https://github.com/phoxal/phoxal-cli) · [Reference robot](https://github.com/phoxal/robot-rover)
+[Project vision](https://phoxal.com) · [Framework](https://github.com/phoxal/framework) · [Developer CLI](https://github.com/phoxal/cargo) · [Reference robot](https://github.com/phoxal/robot-rover)
 
 </div>
 
@@ -20,7 +20,7 @@ Phoxal keeps authoring, deterministic validation, simulation, execution, observa
 
 - [Project vision and public introduction](https://phoxal.com)
 - [Reusable framework and contracts](https://github.com/phoxal/framework)
-- [Developer CLI and execution workflows](https://github.com/phoxal/phoxal-cli)
+- [Developer CLI and execution workflows](https://github.com/phoxal/cargo)
 - [Public rover reference application](https://github.com/phoxal/robot-rover)
 - [Community standards and reusable workflows](https://github.com/phoxal/.github)
 
