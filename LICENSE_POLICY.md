@@ -10,8 +10,7 @@ The AGPL applies to:
 
 - every public `phoxal-*` crate published to crates.io;
 - every Phoxal binary (CLI, simulator, operator tools);
-- every Phoxal runtime image published to GHCR;
-- every scaffold emitted by `phoxal-cli create`.
+- every Phoxal runtime image published to GHCR.
 
 ## Commercial license
 
