@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1>PHOXAL</h1>
+<h1><img src="https://raw.githubusercontent.com/phoxal/.github/main/profile/assets/phoxal-wordmark.png" alt="PHOXAL" width="360" height="120"></h1>
 
 ### Build robots that improve without giving up control.
 
